@@ -1,9 +1,9 @@
 const difficultyConfig = {
-    easy: { pairCount: 4, boardClass: "easy", baseScore: 900 },
-    medium: { pairCount: 8, boardClass: "medium", baseScore: 1800 },
-    hard: { pairCount: 12, boardClass: "hard", baseScore: 3000 },
+    easy: { pairCount: 4, boardClass: "easy", baseScore: 900, label: "Easy" },
+    medium: { pairCount: 8, boardClass: "medium", baseScore: 1800, label: "Medium" },
+    hard: { pairCount: 12, boardClass: "hard", baseScore: 3000, label: "Hard" },
 };
-const themePacks = {
+const textThemePacks = {
     emoji: [
         "\u{1F604}",
         "\u{1F929}",
@@ -18,7 +18,6 @@ const themePacks = {
         "\u{1F60B}",
         "\u{1F47D}",
     ],
-    programming: ["</>", "TS", "JS", "API", "SQL", "CLI", "GIT", "BUG", "UX", "UI", "CSS", "NPM"],
     animals: [
         "\u{1F436}",
         "\u{1F431}",
@@ -33,22 +32,56 @@ const themePacks = {
         "\u{1F428}",
         "\u{1F43B}",
     ],
+};
+const imageThemePacks = {
+    programming: [
+        "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg",
+        "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg",
+        "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg",
+        "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg",
+        "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/csharp/csharp-original.svg",
+        "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cplusplus/cplusplus-original.svg",
+        "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/go/go-original.svg",
+        "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/rust/rust-plain.svg",
+        "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/php/php-original.svg",
+        "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/ruby/ruby-original.svg",
+        "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/kotlin/kotlin-original.svg",
+        "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/swift/swift-original.svg",
+    ],
     flags: [
-        "\u{1F1FA}\u{1F1F8}",
-        "\u{1F1EB}\u{1F1F7}",
-        "\u{1F1EF}\u{1F1F5}",
-        "\u{1F1E7}\u{1F1F7}",
-        "\u{1F1E9}\u{1F1EA}",
-        "\u{1F1E8}\u{1F1E6}",
-        "\u{1F1EC}\u{1F1E7}",
-        "\u{1F1EE}\u{1F1F3}",
-        "\u{1F1E6}\u{1F1FA}",
-        "\u{1F1F8}\u{1F1EA}",
-        "\u{1F1F2}\u{1F1FD}",
-        "\u{1F1F0}\u{1F1F7}",
+        "https://flagcdn.com/w80/us.png",
+        "https://flagcdn.com/w80/fr.png",
+        "https://flagcdn.com/w80/jp.png",
+        "https://flagcdn.com/w80/br.png",
+        "https://flagcdn.com/w80/de.png",
+        "https://flagcdn.com/w80/ca.png",
+        "https://flagcdn.com/w80/in.png",
+        "https://flagcdn.com/w80/gb.png",
+        "https://flagcdn.com/w80/mx.png",
+        "https://flagcdn.com/w80/kr.png",
+        "https://flagcdn.com/w80/au.png",
+        "https://flagcdn.com/w80/se.png",
     ],
 };
+const themeLabels = {
+    emoji: "Emoji",
+    programming: "Programming",
+    animals: "Animals",
+    flags: "Flags",
+    custom: "Custom Images",
+};
 const leaderboardStorageKey = "memory-game-leaderboard-v1";
+const setupScreen = document.getElementById("setupScreen");
+const gameScreen = document.getElementById("gameScreen");
+const startGameBtn = document.getElementById("startGameBtn");
+const playerNameInput = document.getElementById("playerName");
+const difficultySelect = document.getElementById("difficultySelect");
+const themeSelect = document.getElementById("themeSelect");
+const customThemeControls = document.getElementById("customThemeControls");
+const customImageUrlsInput = document.getElementById("customImageUrls");
+const activePlayerEl = document.getElementById("activePlayer");
+const activeDifficultyEl = document.getElementById("activeDifficulty");
+const activeThemeEl = document.getElementById("activeTheme");
 const board = document.getElementById("gameBoard");
 const scoreEl = document.getElementById("score");
 const movesEl = document.getElementById("moves");
@@ -56,12 +89,7 @@ const accuracyEl = document.getElementById("accuracy");
 const timerEl = document.getElementById("timer");
 const statusEl = document.getElementById("status");
 const restartBtn = document.getElementById("restartBtn");
-const difficultySelect = document.getElementById("difficultySelect");
-const themeSelect = document.getElementById("themeSelect");
-const playerNameInput = document.getElementById("playerName");
-const customThemeControls = document.getElementById("customThemeControls");
-const customImageUrlsInput = document.getElementById("customImageUrls");
-const applyCustomThemeBtn = document.getElementById("applyCustomThemeBtn");
+const backToSetupBtn = document.getElementById("backToSetupBtn");
 const leaderboardList = document.getElementById("leaderboardList");
 const gameOverScreen = document.getElementById("gameOverScreen");
 const finalScoreEl = document.getElementById("finalScore");
@@ -71,6 +99,7 @@ const finalTimeEl = document.getElementById("finalTime");
 const restartGameOverBtn = document.getElementById("restartGameOverBtn");
 let currentDifficulty = "medium";
 let currentTheme = "emoji";
+let currentPlayerName = "Player";
 let customImages = [];
 let deck = [];
 let firstSelection = null;
@@ -117,8 +146,12 @@ function getThemeItems() {
         }
         return customImages.slice(0, totalPairs).map((token) => ({ token, kind: "image" }));
     }
-    const tokens = themePacks[currentTheme].slice(0, totalPairs);
-    return tokens.map((token) => ({ token, kind: "text" }));
+    if (currentTheme === "emoji" || currentTheme === "animals") {
+        const items = textThemePacks[currentTheme].slice(0, totalPairs);
+        return items.map((token) => ({ token, kind: "text" }));
+    }
+    const imageItems = imageThemePacks[currentTheme].slice(0, totalPairs);
+    return imageItems.map((token) => ({ token, kind: "image" }));
 }
 function buildDeck(items) {
     const pairs = [...items, ...items];
@@ -217,6 +250,16 @@ function showGameOver() {
 function hideGameOver() {
     gameOverScreen.classList.add("hidden");
 }
+function showSetupScreen() {
+    stopTimer();
+    hideGameOver();
+    setupScreen.classList.remove("hidden");
+    gameScreen.classList.add("hidden");
+}
+function showGameScreen() {
+    setupScreen.classList.add("hidden");
+    gameScreen.classList.remove("hidden");
+}
 function createCardElement(card, index) {
     const cardEl = document.createElement("button");
     cardEl.className = "card deal-in";
@@ -236,7 +279,8 @@ function createCardElement(card, index) {
         const image = document.createElement("img");
         image.className = "card-image";
         image.src = card.token;
-        image.alt = "Custom memory card";
+        image.alt = "Memory card icon";
+        image.loading = "lazy";
         front.appendChild(image);
     }
     else {
@@ -357,11 +401,8 @@ async function loadLeaderboard() {
     renderLeaderboard(records);
 }
 async function saveLeaderboardRecord() {
-    const rawName = playerNameInput.value.trim();
-    const playerName = rawName.length > 0 ? rawName : "Player";
-    playerNameInput.value = playerName;
     const record = {
-        name: playerName,
+        name: currentPlayerName,
         score,
         time: elapsedSeconds,
         moves,
@@ -466,29 +507,37 @@ function startGame() {
     updateStats();
     renderBoard();
 }
-function updateThemeControls() {
-    customThemeControls.classList.toggle("hidden", currentTheme !== "custom");
+function updateSetupThemeControls() {
+    customThemeControls.classList.toggle("hidden", themeSelect.value !== "custom");
 }
-difficultySelect.addEventListener("change", () => {
-    applyDifficulty(difficultySelect.value);
+function startConfiguredGame() {
+    const selectedDifficulty = difficultySelect.value;
+    const selectedTheme = themeSelect.value;
+    const enteredName = playerNameInput.value.trim();
+    currentPlayerName = enteredName.length > 0 ? enteredName : "Player";
+    playerNameInput.value = currentPlayerName;
+    applyDifficulty(selectedDifficulty);
+    currentTheme = selectedTheme;
+    if (currentTheme === "custom") {
+        customImages = parseCustomImageUrls(customImageUrlsInput.value);
+        if (customImages.length < totalPairs) {
+            statusEl.textContent = "";
+            alert(`Please enter at least ${totalPairs} valid image URLs for custom theme.`);
+            return;
+        }
+    }
+    activePlayerEl.textContent = currentPlayerName;
+    activeDifficultyEl.textContent = difficultyConfig[currentDifficulty].label;
+    activeThemeEl.textContent = themeLabels[currentTheme];
+    showGameScreen();
     startGame();
-});
-themeSelect.addEventListener("change", () => {
-    currentTheme = themeSelect.value;
-    updateThemeControls();
-    startGame();
-});
-applyCustomThemeBtn.addEventListener("click", () => {
-    customImages = parseCustomImageUrls(customImageUrlsInput.value);
-    currentTheme = "custom";
-    themeSelect.value = "custom";
-    updateThemeControls();
-    startGame();
-});
+}
+themeSelect.addEventListener("change", updateSetupThemeControls);
+startGameBtn.addEventListener("click", startConfiguredGame);
 restartBtn.addEventListener("click", startGame);
 restartGameOverBtn.addEventListener("click", startGame);
-applyDifficulty(currentDifficulty);
-updateThemeControls();
+backToSetupBtn.addEventListener("click", showSetupScreen);
+updateSetupThemeControls();
 void loadLeaderboard();
-startGame();
+showSetupScreen();
 export {};

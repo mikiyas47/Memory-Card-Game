@@ -26,6 +26,76 @@ body {
     linear-gradient(160deg, var(--bg-0), var(--bg-1));
 }
 
+.hidden {
+  display: none;
+}
+
+.setup-screen {
+  width: min(560px, 92vw);
+}
+
+.setup-card {
+  padding: 28px;
+  border-radius: 24px;
+  background: linear-gradient(140deg, rgba(17, 24, 39, 0.86), rgba(15, 23, 42, 0.72));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 45px rgba(2, 6, 23, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  backdrop-filter: blur(14px);
+  display: grid;
+  gap: 14px;
+}
+
+.setup-card h1 {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(1.8rem, 3vw, 2.3rem);
+  color: #f8fafc;
+}
+
+.setup-subtitle {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+}
+
+.setup-field {
+  display: grid;
+  gap: 8px;
+}
+
+.setup-field label {
+  font-weight: 600;
+}
+
+#playerName,
+#difficultySelect,
+#themeSelect,
+#customImageUrls {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.9);
+  font-weight: 600;
+}
+
+#playerName::placeholder,
+#customImageUrls::placeholder {
+  color: #94a3b8;
+}
+
+#startGameBtn {
+  margin-top: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  color: #eff6ff;
+  font-weight: 700;
+  background: linear-gradient(120deg, rgba(139, 92, 246, 0.9), rgba(59, 130, 246, 0.9));
+  box-shadow: 0 12px 30px rgba(30, 41, 59, 0.4);
+}
+
 .app {
   width: min(980px, 92vw);
   padding: 28px;
@@ -51,55 +121,20 @@ body {
   color: #f8fafc;
 }
 
-.controls {
+.selection-summary {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.selection-summary p {
+  margin: 0;
   padding: 8px 12px;
   border-radius: 999px;
   background: var(--glass);
   border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.controls label {
-  color: var(--text);
   font-weight: 600;
-}
-
-#difficultySelect,
-#themeSelect,
-#playerName,
-#customImageUrls {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 10px;
-  padding: 6px 10px;
-  color: #f8fafc;
-  background: rgba(15, 23, 42, 0.9);
-  font-weight: 600;
-}
-
-#playerName::placeholder,
-#customImageUrls::placeholder {
-  color: #94a3b8;
-}
-
-#applyCustomThemeBtn {
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  padding: 8px 10px;
-  color: #eff6ff;
-  background: linear-gradient(120deg, rgba(139, 92, 246, 0.85), rgba(59, 130, 246, 0.85));
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.custom-theme {
-  width: min(760px, 88vw);
-  justify-content: center;
-}
-
-.hidden {
-  display: none;
 }
 
 .stats {
@@ -120,7 +155,16 @@ body {
   font-weight: 600;
 }
 
-#restartBtn {
+.game-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+#restartBtn,
+#backToSetupBtn,
+#restartGameOverBtn {
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
   padding: 11px 16px;
@@ -132,7 +176,9 @@ body {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-#restartBtn:hover {
+#restartBtn:hover,
+#backToSetupBtn:hover,
+#restartGameOverBtn:hover {
   transform: translateY(-1px);
   box-shadow: 0 15px 35px rgba(59, 130, 246, 0.34);
 }
@@ -219,11 +265,9 @@ body {
 }
 
 .card-image {
-  width: 88%;
-  height: 88%;
-  object-fit: cover;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
 }
 
 .card.matched .card-front {
@@ -308,24 +352,6 @@ body {
   color: var(--text);
 }
 
-#restartGameOverBtn {
-  margin-top: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  padding: 10px 16px;
-  cursor: pointer;
-  color: #eff6ff;
-  font-weight: 700;
-  background: linear-gradient(120deg, rgba(139, 92, 246, 0.9), rgba(59, 130, 246, 0.9));
-  box-shadow: 0 12px 30px rgba(30, 41, 59, 0.4);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-#restartGameOverBtn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 15px 35px rgba(59, 130, 246, 0.34);
-}
-
 @keyframes pop-in {
   from {
     opacity: 0;
@@ -349,7 +375,8 @@ body {
 }
 
 @media (max-width: 700px) {
-  .app {
+  .app,
+  .setup-card {
     padding: 20px;
   }
 
@@ -367,16 +394,13 @@ body {
     gap: 10px;
     padding: 12px;
   }
-
-  .custom-theme {
-    width: 100%;
-  }
 }
 
 @media (max-width: 520px) {
-  .controls {
+  .selection-summary,
+  .stats,
+  .game-actions {
     flex-direction: column;
-    border-radius: 14px;
     align-items: stretch;
   }
 

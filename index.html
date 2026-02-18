@@ -7,22 +7,26 @@
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <main class="app">
-    <header class="topbar">
+  <section id="setupScreen" class="setup-screen">
+    <div class="setup-card">
       <h1>Memory Card Game</h1>
-      <div class="controls">
-        <label for="playerName">Player</label>
+      <p class="setup-subtitle">Choose your player settings before entering the game board.</p>
+
+      <div class="setup-field">
+        <label for="playerName">Player name</label>
         <input id="playerName" type="text" maxlength="24" placeholder="Your name" value="Player" />
       </div>
-      <div class="controls">
-        <label for="difficultySelect">Difficulty</label>
+
+      <div class="setup-field">
+        <label for="difficultySelect">Game difficulty</label>
         <select id="difficultySelect" aria-label="Select difficulty">
           <option value="easy">Easy (8 cards)</option>
           <option value="medium" selected>Medium (16 cards)</option>
           <option value="hard">Hard (24 cards)</option>
         </select>
       </div>
-      <div class="controls">
+
+      <div class="setup-field">
         <label for="themeSelect">Theme</label>
         <select id="themeSelect" aria-label="Select theme">
           <option value="emoji" selected>Emoji &#128516;</option>
@@ -32,10 +36,23 @@
           <option value="custom">Custom images</option>
         </select>
       </div>
-      <div id="customThemeControls" class="controls custom-theme hidden">
-        <label for="customImageUrls">Image URLs</label>
+
+      <div id="customThemeControls" class="setup-field hidden">
+        <label for="customImageUrls">Custom image URLs</label>
         <input id="customImageUrls" type="text" placeholder="Comma-separated image URLs" />
-        <button id="applyCustomThemeBtn" type="button">Apply Images</button>
+      </div>
+
+      <button id="startGameBtn" type="button">Start Game</button>
+    </div>
+  </section>
+
+  <main id="gameScreen" class="app hidden">
+    <header class="topbar">
+      <h1>Memory Card Game</h1>
+      <div class="selection-summary">
+        <p>Player: <span id="activePlayer">Player</span></p>
+        <p>Difficulty: <span id="activeDifficulty">Medium</span></p>
+        <p>Theme: <span id="activeTheme">Emoji</span></p>
       </div>
       <div class="stats">
         <p>Score: <span id="score">0</span></p>
@@ -43,11 +60,15 @@
         <p>Accuracy: <span id="accuracy">0%</span></p>
         <p>Time: <span id="timer">00:00</span></p>
       </div>
-      <button id="restartBtn" type="button">Restart Game</button>
+      <div class="game-actions">
+        <button id="restartBtn" type="button">Restart Game</button>
+        <button id="backToSetupBtn" type="button">Change Setup</button>
+      </div>
     </header>
 
     <section id="gameBoard" class="board medium" aria-label="Memory card board"></section>
     <p id="status" class="status" aria-live="polite"></p>
+
     <section class="leaderboard">
       <h3>Leaderboard</h3>
       <ol id="leaderboardList"></ol>
