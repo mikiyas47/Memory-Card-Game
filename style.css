@@ -337,20 +337,21 @@ body {
   width: 100%;
   margin: 0 auto;
   display: grid;
-  gap: 14px;
+  gap: 10px;
   padding: 14px;
   border-radius: 18px;
   background: rgba(15, 23, 42, 0.42);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  max-width: 860px;
 }
 
 .board.easy,
 .board.medium {
-  grid-template-columns: repeat(4, minmax(110px, 1fr));
+  grid-template-columns: repeat(4, minmax(64px, 1fr));
 }
 
 .board.hard {
-  grid-template-columns: repeat(6, minmax(90px, 1fr));
+  grid-template-columns: repeat(6, minmax(56px, 1fr));
 }
 
 .card {
@@ -363,7 +364,7 @@ body {
   padding: 0;
   transform-style: preserve-3d;
   perspective: 1000px;
-  min-height: 90px;
+  min-height: 56px;
   touch-action: manipulation;
 }
 
@@ -392,7 +393,7 @@ body {
   display: grid;
   place-items: center;
   border-radius: 14px;
-  font-size: clamp(1.6rem, 2.8vw, 2.2rem);
+  font-size: clamp(0.95rem, 1.6vw, 1.4rem);
   backface-visibility: hidden;
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 12px 24px rgba(2, 6, 23, 0.35);
@@ -413,8 +414,8 @@ body {
 }
 
 .card-image {
-  width: 82%;
-  height: 82%;
+  width: 64%;
+  height: 64%;
   object-fit: contain;
 }
 
@@ -507,11 +508,17 @@ body {
   }
 
   .board.easy,
-  .board.medium,
-  .board.hard {
+  .board.medium {
     grid-template-columns: repeat(4, minmax(78px, 1fr));
     gap: 12px;
     padding: 12px;
+  }
+
+  /* For 24-card (hard) difficulty show 6 columns x 4 rows on small screens */
+  .board.hard {
+    grid-template-columns: repeat(6, minmax(54px, 1fr));
+    gap: 10px;
+    padding: 10px;
   }
 
   #startGameBtn,
@@ -531,25 +538,44 @@ body {
   .card.matched .card-inner {
     transform: rotateY(180deg) translateX(3px);
   }
+
+  /* smaller cards on narrow screens */
+  .card {
+    min-height: 64px;
+  }
 }
 
 @media (max-width: 520px) {
+  /* keep 4 columns for medium (16 cards) on small phones */
   .board.easy,
-  .board.medium,
+  .board.medium {
+    grid-template-columns: repeat(4, minmax(64px, 1fr));
+    gap: 12px;
+  }
+
+  /* allow 6 columns for hard but smaller min width */
   .board.hard {
-    grid-template-columns: repeat(3, minmax(84px, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(6, minmax(44px, 1fr));
+    gap: 10px;
   }
 
   .card {
-    min-height: 108px;
+    min-height: 56px;
   }
 }
 
 @media (max-width: 380px) {
+  /* very small phones: maintain 4 columns for medium, 6 columns for hard with narrow cards */
   .board.easy,
-  .board.medium,
+  .board.medium {
+    grid-template-columns: repeat(4, minmax(48px, 1fr));
+  }
+
   .board.hard {
-    grid-template-columns: repeat(2, minmax(96px, 1fr));
+    grid-template-columns: repeat(6, minmax(36px, 1fr));
+  }
+
+  .card {
+    min-height: 48px;
   }
 }

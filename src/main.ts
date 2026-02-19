@@ -121,6 +121,9 @@ const imageThemePacks = {
 };
 
 const leaderboardStorageKey = "memory-game-leaderboard-v1";
+const defaultApiHost = window.location.hostname || "127.0.0.1";
+const leaderboardApiUrl =
+  window.LEADERBOARD_API_URL ?? `http://${defaultApiHost}:5000/api/leaderboard`;
 
 const landingScreen = document.getElementById("landingScreen") as HTMLElement;
 const difficultyScreen = document.getElementById("difficultyScreen") as HTMLElement;
@@ -457,12 +460,8 @@ function writeLocalLeaderboard(records: LeaderboardRecord[]) {
 }
 
 async function fetchRemoteLeaderboard(): Promise<LeaderboardRecord[] | null> {
-  if (!window.LEADERBOARD_API_URL) {
-    return null;
-  }
-
   try {
-    const response = await fetch(window.LEADERBOARD_API_URL, { method: "GET" });
+    const response = await fetch(leaderboardApiUrl, { method: "GET" });
     if (!response.ok) {
       return null;
     }
@@ -479,12 +478,8 @@ async function fetchRemoteLeaderboard(): Promise<LeaderboardRecord[] | null> {
 }
 
 async function saveRemoteLeaderboard(record: LeaderboardRecord): Promise<boolean> {
-  if (!window.LEADERBOARD_API_URL) {
-    return false;
-  }
-
   try {
-    const response = await fetch(window.LEADERBOARD_API_URL, {
+    const response = await fetch(leaderboardApiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(record),

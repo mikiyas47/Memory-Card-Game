@@ -70,6 +70,8 @@ const imageThemePacks = {
     ],
 };
 const leaderboardStorageKey = "memory-game-leaderboard-v1";
+const defaultApiHost = window.location.hostname || "127.0.0.1";
+const leaderboardApiUrl = window.LEADERBOARD_API_URL ?? `http://${defaultApiHost}:5000/api/leaderboard`;
 const landingScreen = document.getElementById("landingScreen");
 const difficultyScreen = document.getElementById("difficultyScreen");
 const themeScreen = document.getElementById("themeScreen");
@@ -346,11 +348,8 @@ function writeLocalLeaderboard(records) {
     localStorage.setItem(leaderboardStorageKey, JSON.stringify(records));
 }
 async function fetchRemoteLeaderboard() {
-    if (!window.LEADERBOARD_API_URL) {
-        return null;
-    }
     try {
-        const response = await fetch(window.LEADERBOARD_API_URL, { method: "GET" });
+        const response = await fetch(leaderboardApiUrl, { method: "GET" });
         if (!response.ok) {
             return null;
         }
@@ -365,11 +364,8 @@ async function fetchRemoteLeaderboard() {
     }
 }
 async function saveRemoteLeaderboard(record) {
-    if (!window.LEADERBOARD_API_URL) {
-        return false;
-    }
     try {
-        const response = await fetch(window.LEADERBOARD_API_URL, {
+        const response = await fetch(leaderboardApiUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(record),
@@ -415,7 +411,7 @@ function renderLeaderboard(records) {
     }
     const normalizedCurrentName = currentPlayerName.trim().toLowerCase();
     const playerRow = rows.find((row) => row.name.toLowerCase() === normalizedCurrentName);
-    const topRows = rows.slice(0, 8);
+    const topRows = rows.slice(0, 5);
     const playerInTopRows = !!playerRow && topRows.some((row) => row.name === playerRow.name);
     if (playerRow) {
         playerStandingEl.textContent = `Your standing: #${playerRow.rank} of ${rows.length}`;
@@ -451,8 +447,23 @@ function renderLeaderboard(records) {
         item.appendChild(identity);
         item.appendChild(scoreText);
         item.appendChild(timeText);
+        // make rows clickable to view full leaderboard
+        item.style.cursor = 'pointer';
+        item.addEventListener('click', () => {
+            window.location.href = 'leaderboard.html';
+        });
         leaderboardList.appendChild(item);
     });
+    // if there are more rows, add a "View all" link
+    if (rows.length > topRows.length) {
+        const viewAll = document.createElement('li');
+        viewAll.className = 'leaderboard-view-all';
+        const link = document.createElement('a');
+        link.href = 'leaderboard.html';
+        link.textContent = 'View all standings';
+        viewAll.appendChild(link);
+        leaderboardList.appendChild(viewAll);
+    }
 }
 async function loadLeaderboard() {
     const localRecords = readLocalLeaderboard();
