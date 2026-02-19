@@ -3,6 +3,12 @@ const difficultyConfig = {
     medium: { pairCount: 8, boardClass: "medium", baseScore: 1800, label: "Medium" },
     hard: { pairCount: 12, boardClass: "hard", baseScore: 3000, label: "Hard" },
 };
+const themeLabels = {
+    emoji: "Emoji",
+    programming: "Programming",
+    animals: "Animals",
+    flags: "Flags",
+};
 const textThemePacks = {
     emoji: [
         "\u{1F604}",
@@ -63,34 +69,29 @@ const imageThemePacks = {
         "https://flagcdn.com/w80/se.png",
     ],
 };
-const themeLabels = {
-    emoji: "Emoji",
-    programming: "Programming",
-    animals: "Animals",
-    flags: "Flags",
-    custom: "Custom Images",
-};
 const leaderboardStorageKey = "memory-game-leaderboard-v1";
-const setupScreen = document.getElementById("setupScreen");
+const landingScreen = document.getElementById("landingScreen");
+const difficultyScreen = document.getElementById("difficultyScreen");
+const themeScreen = document.getElementById("themeScreen");
 const gameScreen = document.getElementById("gameScreen");
-const startGameBtn = document.getElementById("startGameBtn");
 const playerNameInput = document.getElementById("playerName");
-const difficultySelect = document.getElementById("difficultySelect");
-const themeSelect = document.getElementById("themeSelect");
-const customThemeControls = document.getElementById("customThemeControls");
-const customImageUrlsInput = document.getElementById("customImageUrls");
-const activePlayerEl = document.getElementById("activePlayer");
-const activeDifficultyEl = document.getElementById("activeDifficulty");
-const activeThemeEl = document.getElementById("activeTheme");
+const selectedDifficultyLabel = document.getElementById("selectedDifficultyLabel");
+const selectedThemeLabel = document.getElementById("selectedThemeLabel");
+const playerStandingEl = document.getElementById("playerStanding");
+const leaderboardList = document.getElementById("leaderboardList");
+const openDifficultyBtn = document.getElementById("openDifficultyBtn");
+const openThemeBtn = document.getElementById("openThemeBtn");
+const startGameBtn = document.getElementById("startGameBtn");
+const difficultyBackBtn = document.getElementById("difficultyBackBtn");
+const themeBackBtn = document.getElementById("themeBackBtn");
+const difficultyOptionButtons = Array.from(document.querySelectorAll("[data-difficulty-option]"));
+const themeOptionButtons = Array.from(document.querySelectorAll("[data-theme-option]"));
 const board = document.getElementById("gameBoard");
-const scoreEl = document.getElementById("score");
 const movesEl = document.getElementById("moves");
-const accuracyEl = document.getElementById("accuracy");
 const timerEl = document.getElementById("timer");
 const statusEl = document.getElementById("status");
 const restartBtn = document.getElementById("restartBtn");
 const backToSetupBtn = document.getElementById("backToSetupBtn");
-const leaderboardList = document.getElementById("leaderboardList");
 const gameOverScreen = document.getElementById("gameOverScreen");
 const finalScoreEl = document.getElementById("finalScore");
 const finalAccuracyEl = document.getElementById("finalAccuracy");
@@ -99,8 +100,8 @@ const finalTimeEl = document.getElementById("finalTime");
 const restartGameOverBtn = document.getElementById("restartGameOverBtn");
 let currentDifficulty = "medium";
 let currentTheme = "emoji";
-let currentPlayerName = "Player";
-let customImages = [];
+let currentPlayerName = playerNameInput.value.trim() || "Player";
+let cachedLeaderboardRecords = [];
 let deck = [];
 let firstSelection = null;
 let secondSelection = null;
@@ -126,26 +127,15 @@ function formatTime(totalSeconds) {
     const seconds = totalSeconds % 60;
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
-function parseCustomImageUrls(raw) {
-    const unique = new Set();
-    raw
-        .split(",")
-        .map((item) => item.trim())
-        .filter((item) => item.length > 0)
-        .forEach((item) => {
-        if (/^https?:\/\//i.test(item)) {
-            unique.add(item);
-        }
-    });
-    return [...unique];
+function syncPlayerNameFromInput() {
+    const enteredName = playerNameInput.value.trim();
+    currentPlayerName = enteredName.length > 0 ? enteredName : "Player";
+}
+function normalizePlayerNameInput() {
+    syncPlayerNameFromInput();
+    playerNameInput.value = currentPlayerName;
 }
 function getThemeItems() {
-    if (currentTheme === "custom") {
-        if (customImages.length < totalPairs) {
-            return null;
-        }
-        return customImages.slice(0, totalPairs).map((token) => ({ token, kind: "image" }));
-    }
     if (currentTheme === "emoji" || currentTheme === "animals") {
         const items = textThemePacks[currentTheme].slice(0, totalPairs);
         return items.map((token) => ({ token, kind: "text" }));
@@ -178,9 +168,7 @@ function calculateScore() {
 }
 function updateStats() {
     score = calculateScore();
-    scoreEl.textContent = String(score);
     movesEl.textContent = String(moves);
-    accuracyEl.textContent = `${Math.round(getAccuracy() * 100)}%`;
     timerEl.textContent = formatTime(elapsedSeconds);
 }
 function getAudioContext() {
@@ -250,14 +238,49 @@ function showGameOver() {
 function hideGameOver() {
     gameOverScreen.classList.add("hidden");
 }
-function showSetupScreen() {
+function updateSelectionCards() {
+    selectedDifficultyLabel.textContent = difficultyConfig[currentDifficulty].label;
+    selectedThemeLabel.textContent = themeLabels[currentTheme];
+}
+function updatePickerSelectionState() {
+    difficultyOptionButtons.forEach((button) => {
+        const value = button.dataset.difficultyOption;
+        button.classList.toggle("active", value === currentDifficulty);
+    });
+    themeOptionButtons.forEach((button) => {
+        const value = button.dataset.themeOption;
+        button.classList.toggle("active", value === currentTheme);
+    });
+}
+function showLandingScreen() {
     stopTimer();
     hideGameOver();
-    setupScreen.classList.remove("hidden");
+    landingScreen.classList.remove("hidden");
+    difficultyScreen.classList.add("hidden");
+    themeScreen.classList.add("hidden");
     gameScreen.classList.add("hidden");
+    updateSelectionCards();
+    updatePickerSelectionState();
+    renderLeaderboard(cachedLeaderboardRecords);
+}
+function showDifficultyScreen() {
+    landingScreen.classList.add("hidden");
+    difficultyScreen.classList.remove("hidden");
+    themeScreen.classList.add("hidden");
+    gameScreen.classList.add("hidden");
+    updatePickerSelectionState();
+}
+function showThemeScreen() {
+    landingScreen.classList.add("hidden");
+    difficultyScreen.classList.add("hidden");
+    themeScreen.classList.remove("hidden");
+    gameScreen.classList.add("hidden");
+    updatePickerSelectionState();
 }
 function showGameScreen() {
-    setupScreen.classList.add("hidden");
+    landingScreen.classList.add("hidden");
+    difficultyScreen.classList.add("hidden");
+    themeScreen.classList.add("hidden");
     gameScreen.classList.remove("hidden");
 }
 function createCardElement(card, index) {
@@ -372,22 +395,62 @@ function buildLeaderboardRows(records) {
         existing.bestScore = Math.max(existing.bestScore, record.score);
         existing.bestTime = Math.min(existing.bestTime, record.time);
     });
-    return [...byPlayer.values()]
-        .sort((a, b) => b.bestScore - a.bestScore || a.bestTime - b.bestTime)
-        .slice(0, 8);
+    const sorted = [...byPlayer.values()].sort((a, b) => b.bestScore - a.bestScore || a.bestTime - b.bestTime);
+    return sorted.map((row, index) => ({
+        rank: index + 1,
+        name: row.name,
+        bestScore: row.bestScore,
+        bestTime: row.bestTime,
+    }));
 }
 function renderLeaderboard(records) {
     leaderboardList.innerHTML = "";
     const rows = buildLeaderboardRows(records);
     if (rows.length === 0) {
+        playerStandingEl.textContent = "Play to create your standing.";
         const item = document.createElement("li");
         item.textContent = "No records yet";
         leaderboardList.appendChild(item);
         return;
     }
-    rows.forEach((row) => {
+    const normalizedCurrentName = currentPlayerName.trim().toLowerCase();
+    const playerRow = rows.find((row) => row.name.toLowerCase() === normalizedCurrentName);
+    const topRows = rows.slice(0, 8);
+    const playerInTopRows = !!playerRow && topRows.some((row) => row.name === playerRow.name);
+    if (playerRow) {
+        playerStandingEl.textContent = `Your standing: #${playerRow.rank} of ${rows.length}`;
+    }
+    else {
+        playerStandingEl.textContent = "Play a game to appear in the standings.";
+    }
+    const rowsToRender = [...topRows];
+    if (playerRow && !playerInTopRows) {
+        rowsToRender.push(playerRow);
+    }
+    rowsToRender.forEach((row, index) => {
+        if (playerRow && !playerInTopRows && index === topRows.length) {
+            const divider = document.createElement("li");
+            divider.className = "leaderboard-divider";
+            divider.textContent = "...";
+            leaderboardList.appendChild(divider);
+        }
         const item = document.createElement("li");
-        item.innerHTML = `<strong>${row.name}</strong> <span>Score ${row.bestScore}</span> <span>${formatTime(row.bestTime)}</span>`;
+        item.className = "leaderboard-row";
+        if (playerRow && row.name.toLowerCase() === playerRow.name.toLowerCase()) {
+            item.classList.add("me");
+        }
+        const identity = document.createElement("span");
+        identity.className = "leaderboard-name";
+        identity.textContent = `#${row.rank} ${row.name}`;
+        const scoreText = document.createElement("span");
+        scoreText.className = "leaderboard-score";
+        scoreText.textContent = `Score ${row.bestScore}`;
+        const timeText = document.createElement("span");
+        timeText.className = "leaderboard-time";
+        timeText.textContent = formatTime(row.bestTime);
+        item.appendChild(identity);
+        item.appendChild(scoreText);
+        item.appendChild(timeText);
         leaderboardList.appendChild(item);
     });
 }
@@ -398,6 +461,7 @@ async function loadLeaderboard() {
     if (remoteRecords) {
         writeLocalLeaderboard(remoteRecords);
     }
+    cachedLeaderboardRecords = records;
     renderLeaderboard(records);
 }
 async function saveLeaderboardRecord() {
@@ -414,16 +478,17 @@ async function saveLeaderboardRecord() {
     const localRecords = readLocalLeaderboard();
     localRecords.push(record);
     writeLocalLeaderboard(localRecords);
+    cachedLeaderboardRecords = localRecords;
+    renderLeaderboard(cachedLeaderboardRecords);
     const remoteSaved = await saveRemoteLeaderboard(record);
     if (remoteSaved) {
         const remoteRecords = await fetchRemoteLeaderboard();
         if (remoteRecords) {
             writeLocalLeaderboard(remoteRecords);
-            renderLeaderboard(remoteRecords);
-            return;
+            cachedLeaderboardRecords = remoteRecords;
+            renderLeaderboard(cachedLeaderboardRecords);
         }
     }
-    renderLeaderboard(localRecords);
 }
 function checkWin() {
     if (matchedPairs === totalPairs) {
@@ -496,48 +561,61 @@ function startGame() {
     lockBoard = false;
     hideGameOver();
     const themeItems = getThemeItems();
-    if (!themeItems) {
-        board.innerHTML = "";
-        updateStats();
-        statusEl.textContent = `Add at least ${totalPairs} image URLs for custom theme.`;
-        return;
-    }
     statusEl.textContent = "Find all matching pairs.";
     deck = buildDeck(themeItems);
     updateStats();
     renderBoard();
 }
-function updateSetupThemeControls() {
-    customThemeControls.classList.toggle("hidden", themeSelect.value !== "custom");
-}
 function startConfiguredGame() {
-    const selectedDifficulty = difficultySelect.value;
-    const selectedTheme = themeSelect.value;
-    const enteredName = playerNameInput.value.trim();
-    currentPlayerName = enteredName.length > 0 ? enteredName : "Player";
-    playerNameInput.value = currentPlayerName;
-    applyDifficulty(selectedDifficulty);
-    currentTheme = selectedTheme;
-    if (currentTheme === "custom") {
-        customImages = parseCustomImageUrls(customImageUrlsInput.value);
-        if (customImages.length < totalPairs) {
-            statusEl.textContent = "";
-            alert(`Please enter at least ${totalPairs} valid image URLs for custom theme.`);
-            return;
-        }
-    }
-    activePlayerEl.textContent = currentPlayerName;
-    activeDifficultyEl.textContent = difficultyConfig[currentDifficulty].label;
-    activeThemeEl.textContent = themeLabels[currentTheme];
+    normalizePlayerNameInput();
     showGameScreen();
     startGame();
 }
-themeSelect.addEventListener("change", updateSetupThemeControls);
+openDifficultyBtn.addEventListener("click", () => {
+    syncPlayerNameFromInput();
+    showDifficultyScreen();
+});
+openThemeBtn.addEventListener("click", () => {
+    syncPlayerNameFromInput();
+    showThemeScreen();
+});
+difficultyBackBtn.addEventListener("click", showLandingScreen);
+themeBackBtn.addEventListener("click", showLandingScreen);
+difficultyOptionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+        const selected = button.dataset.difficultyOption;
+        if (!selected) {
+            return;
+        }
+        applyDifficulty(selected);
+        showLandingScreen();
+    });
+});
+themeOptionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+        const selected = button.dataset.themeOption;
+        if (!selected) {
+            return;
+        }
+        currentTheme = selected;
+        showLandingScreen();
+    });
+});
+playerNameInput.addEventListener("input", () => {
+    syncPlayerNameFromInput();
+    renderLeaderboard(cachedLeaderboardRecords);
+});
+playerNameInput.addEventListener("blur", () => {
+    normalizePlayerNameInput();
+    renderLeaderboard(cachedLeaderboardRecords);
+});
 startGameBtn.addEventListener("click", startConfiguredGame);
 restartBtn.addEventListener("click", startGame);
 restartGameOverBtn.addEventListener("click", startGame);
-backToSetupBtn.addEventListener("click", showSetupScreen);
-updateSetupThemeControls();
+backToSetupBtn.addEventListener("click", showLandingScreen);
+applyDifficulty(currentDifficulty);
+updateSelectionCards();
+updatePickerSelectionState();
 void loadLeaderboard();
-showSetupScreen();
+showLandingScreen();
 export {};

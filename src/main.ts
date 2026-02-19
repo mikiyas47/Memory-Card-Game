@@ -1,5 +1,5 @@
 type Difficulty = "easy" | "medium" | "hard";
-type ThemeName = "emoji" | "programming" | "animals" | "flags" | "custom";
+type ThemeName = "emoji" | "programming" | "animals" | "flags";
 type CardKind = "text" | "image";
 
 type CardData = {
@@ -33,6 +33,7 @@ type LeaderboardRecord = {
 };
 
 type LeaderboardRow = {
+  rank: number;
   name: string;
   bestScore: number;
   bestTime: number;
@@ -48,6 +49,13 @@ const difficultyConfig: Record<Difficulty, DifficultyConfig> = {
   easy: { pairCount: 4, boardClass: "easy", baseScore: 900, label: "Easy" },
   medium: { pairCount: 8, boardClass: "medium", baseScore: 1800, label: "Medium" },
   hard: { pairCount: 12, boardClass: "hard", baseScore: 3000, label: "Hard" },
+};
+
+const themeLabels: Record<ThemeName, string> = {
+  emoji: "Emoji",
+  programming: "Programming",
+  animals: "Animals",
+  flags: "Flags",
 };
 
 const textThemePacks = {
@@ -112,37 +120,36 @@ const imageThemePacks = {
   ],
 };
 
-const themeLabels: Record<ThemeName, string> = {
-  emoji: "Emoji",
-  programming: "Programming",
-  animals: "Animals",
-  flags: "Flags",
-  custom: "Custom Images",
-};
-
 const leaderboardStorageKey = "memory-game-leaderboard-v1";
 
-const setupScreen = document.getElementById("setupScreen") as HTMLElement;
+const landingScreen = document.getElementById("landingScreen") as HTMLElement;
+const difficultyScreen = document.getElementById("difficultyScreen") as HTMLElement;
+const themeScreen = document.getElementById("themeScreen") as HTMLElement;
 const gameScreen = document.getElementById("gameScreen") as HTMLElement;
-const startGameBtn = document.getElementById("startGameBtn") as HTMLButtonElement;
+
 const playerNameInput = document.getElementById("playerName") as HTMLInputElement;
-const difficultySelect = document.getElementById("difficultySelect") as HTMLSelectElement;
-const themeSelect = document.getElementById("themeSelect") as HTMLSelectElement;
-const customThemeControls = document.getElementById("customThemeControls") as HTMLElement;
-const customImageUrlsInput = document.getElementById("customImageUrls") as HTMLInputElement;
-const activePlayerEl = document.getElementById("activePlayer") as HTMLElement;
-const activeDifficultyEl = document.getElementById("activeDifficulty") as HTMLElement;
-const activeThemeEl = document.getElementById("activeTheme") as HTMLElement;
+const selectedDifficultyLabel = document.getElementById("selectedDifficultyLabel") as HTMLElement;
+const selectedThemeLabel = document.getElementById("selectedThemeLabel") as HTMLElement;
+const playerStandingEl = document.getElementById("playerStanding") as HTMLElement;
+const leaderboardList = document.getElementById("leaderboardList") as HTMLOListElement;
+
+const openDifficultyBtn = document.getElementById("openDifficultyBtn") as HTMLButtonElement;
+const openThemeBtn = document.getElementById("openThemeBtn") as HTMLButtonElement;
+const startGameBtn = document.getElementById("startGameBtn") as HTMLButtonElement;
+const difficultyBackBtn = document.getElementById("difficultyBackBtn") as HTMLButtonElement;
+const themeBackBtn = document.getElementById("themeBackBtn") as HTMLButtonElement;
+
+const difficultyOptionButtons = Array.from(
+  document.querySelectorAll<HTMLButtonElement>("[data-difficulty-option]"),
+);
+const themeOptionButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-theme-option]"));
 
 const board = document.getElementById("gameBoard") as HTMLElement;
-const scoreEl = document.getElementById("score") as HTMLElement;
 const movesEl = document.getElementById("moves") as HTMLElement;
-const accuracyEl = document.getElementById("accuracy") as HTMLElement;
 const timerEl = document.getElementById("timer") as HTMLElement;
 const statusEl = document.getElementById("status") as HTMLElement;
 const restartBtn = document.getElementById("restartBtn") as HTMLButtonElement;
 const backToSetupBtn = document.getElementById("backToSetupBtn") as HTMLButtonElement;
-const leaderboardList = document.getElementById("leaderboardList") as HTMLOListElement;
 
 const gameOverScreen = document.getElementById("gameOverScreen") as HTMLElement;
 const finalScoreEl = document.getElementById("finalScore") as HTMLElement;
@@ -153,8 +160,9 @@ const restartGameOverBtn = document.getElementById("restartGameOverBtn") as HTML
 
 let currentDifficulty: Difficulty = "medium";
 let currentTheme: ThemeName = "emoji";
-let currentPlayerName = "Player";
-let customImages: string[] = [];
+let currentPlayerName = playerNameInput.value.trim() || "Player";
+
+let cachedLeaderboardRecords: LeaderboardRecord[] = [];
 
 let deck: CardData[] = [];
 let firstSelection: HTMLButtonElement | null = null;
@@ -184,31 +192,17 @@ function formatTime(totalSeconds: number): string {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-function parseCustomImageUrls(raw: string): string[] {
-  const unique = new Set<string>();
-
-  raw
-    .split(",")
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0)
-    .forEach((item) => {
-      if (/^https?:\/\//i.test(item)) {
-        unique.add(item);
-      }
-    });
-
-  return [...unique];
+function syncPlayerNameFromInput() {
+  const enteredName = playerNameInput.value.trim();
+  currentPlayerName = enteredName.length > 0 ? enteredName : "Player";
 }
 
-function getThemeItems(): ThemeItem[] | null {
-  if (currentTheme === "custom") {
-    if (customImages.length < totalPairs) {
-      return null;
-    }
+function normalizePlayerNameInput() {
+  syncPlayerNameFromInput();
+  playerNameInput.value = currentPlayerName;
+}
 
-    return customImages.slice(0, totalPairs).map((token) => ({ token, kind: "image" }));
-  }
-
+function getThemeItems(): ThemeItem[] {
   if (currentTheme === "emoji" || currentTheme === "animals") {
     const items = textThemePacks[currentTheme].slice(0, totalPairs);
     return items.map((token) => ({ token, kind: "text" }));
@@ -246,9 +240,7 @@ function calculateScore(): number {
 
 function updateStats() {
   score = calculateScore();
-  scoreEl.textContent = String(score);
   movesEl.textContent = String(moves);
-  accuracyEl.textContent = `${Math.round(getAccuracy() * 100)}%`;
   timerEl.textContent = formatTime(elapsedSeconds);
 }
 
@@ -340,15 +332,55 @@ function hideGameOver() {
   gameOverScreen.classList.add("hidden");
 }
 
-function showSetupScreen() {
+function updateSelectionCards() {
+  selectedDifficultyLabel.textContent = difficultyConfig[currentDifficulty].label;
+  selectedThemeLabel.textContent = themeLabels[currentTheme];
+}
+
+function updatePickerSelectionState() {
+  difficultyOptionButtons.forEach((button) => {
+    const value = button.dataset.difficultyOption as Difficulty | undefined;
+    button.classList.toggle("active", value === currentDifficulty);
+  });
+
+  themeOptionButtons.forEach((button) => {
+    const value = button.dataset.themeOption as ThemeName | undefined;
+    button.classList.toggle("active", value === currentTheme);
+  });
+}
+
+function showLandingScreen() {
   stopTimer();
   hideGameOver();
-  setupScreen.classList.remove("hidden");
+  landingScreen.classList.remove("hidden");
+  difficultyScreen.classList.add("hidden");
+  themeScreen.classList.add("hidden");
   gameScreen.classList.add("hidden");
+  updateSelectionCards();
+  updatePickerSelectionState();
+  renderLeaderboard(cachedLeaderboardRecords);
+}
+
+function showDifficultyScreen() {
+  landingScreen.classList.add("hidden");
+  difficultyScreen.classList.remove("hidden");
+  themeScreen.classList.add("hidden");
+  gameScreen.classList.add("hidden");
+  updatePickerSelectionState();
+}
+
+function showThemeScreen() {
+  landingScreen.classList.add("hidden");
+  difficultyScreen.classList.add("hidden");
+  themeScreen.classList.remove("hidden");
+  gameScreen.classList.add("hidden");
+  updatePickerSelectionState();
 }
 
 function showGameScreen() {
-  setupScreen.classList.add("hidden");
+  landingScreen.classList.add("hidden");
+  difficultyScreen.classList.add("hidden");
+  themeScreen.classList.add("hidden");
   gameScreen.classList.remove("hidden");
 }
 
@@ -464,7 +496,7 @@ async function saveRemoteLeaderboard(record: LeaderboardRecord): Promise<boolean
 }
 
 function buildLeaderboardRows(records: LeaderboardRecord[]): LeaderboardRow[] {
-  const byPlayer = new Map<string, LeaderboardRow>();
+  const byPlayer = new Map<string, { name: string; bestScore: number; bestTime: number }>();
 
   records.forEach((record) => {
     const existing = byPlayer.get(record.name);
@@ -481,9 +513,16 @@ function buildLeaderboardRows(records: LeaderboardRecord[]): LeaderboardRow[] {
     existing.bestTime = Math.min(existing.bestTime, record.time);
   });
 
-  return [...byPlayer.values()]
-    .sort((a, b) => b.bestScore - a.bestScore || a.bestTime - b.bestTime)
-    .slice(0, 8);
+  const sorted = [...byPlayer.values()].sort(
+    (a, b) => b.bestScore - a.bestScore || a.bestTime - b.bestTime,
+  );
+
+  return sorted.map((row, index) => ({
+    rank: index + 1,
+    name: row.name,
+    bestScore: row.bestScore,
+    bestTime: row.bestTime,
+  }));
 }
 
 function renderLeaderboard(records: LeaderboardRecord[]) {
@@ -491,17 +530,58 @@ function renderLeaderboard(records: LeaderboardRecord[]) {
 
   const rows = buildLeaderboardRows(records);
   if (rows.length === 0) {
+    playerStandingEl.textContent = "Play to create your standing.";
     const item = document.createElement("li");
     item.textContent = "No records yet";
     leaderboardList.appendChild(item);
     return;
   }
 
-  rows.forEach((row) => {
+  const normalizedCurrentName = currentPlayerName.trim().toLowerCase();
+  const playerRow = rows.find((row) => row.name.toLowerCase() === normalizedCurrentName);
+  const topRows = rows.slice(0, 8);
+  const playerInTopRows = !!playerRow && topRows.some((row) => row.name === playerRow.name);
+
+  if (playerRow) {
+    playerStandingEl.textContent = `Your standing: #${playerRow.rank} of ${rows.length}`;
+  } else {
+    playerStandingEl.textContent = "Play a game to appear in the standings.";
+  }
+
+  const rowsToRender = [...topRows];
+  if (playerRow && !playerInTopRows) {
+    rowsToRender.push(playerRow);
+  }
+
+  rowsToRender.forEach((row, index) => {
+    if (playerRow && !playerInTopRows && index === topRows.length) {
+      const divider = document.createElement("li");
+      divider.className = "leaderboard-divider";
+      divider.textContent = "...";
+      leaderboardList.appendChild(divider);
+    }
+
     const item = document.createElement("li");
-    item.innerHTML = `<strong>${row.name}</strong> <span>Score ${row.bestScore}</span> <span>${formatTime(
-      row.bestTime,
-    )}</span>`;
+    item.className = "leaderboard-row";
+    if (playerRow && row.name.toLowerCase() === playerRow.name.toLowerCase()) {
+      item.classList.add("me");
+    }
+
+    const identity = document.createElement("span");
+    identity.className = "leaderboard-name";
+    identity.textContent = `#${row.rank} ${row.name}`;
+
+    const scoreText = document.createElement("span");
+    scoreText.className = "leaderboard-score";
+    scoreText.textContent = `Score ${row.bestScore}`;
+
+    const timeText = document.createElement("span");
+    timeText.className = "leaderboard-time";
+    timeText.textContent = formatTime(row.bestTime);
+
+    item.appendChild(identity);
+    item.appendChild(scoreText);
+    item.appendChild(timeText);
     leaderboardList.appendChild(item);
   });
 }
@@ -515,6 +595,7 @@ async function loadLeaderboard() {
     writeLocalLeaderboard(remoteRecords);
   }
 
+  cachedLeaderboardRecords = records;
   renderLeaderboard(records);
 }
 
@@ -533,18 +614,18 @@ async function saveLeaderboardRecord() {
   const localRecords = readLocalLeaderboard();
   localRecords.push(record);
   writeLocalLeaderboard(localRecords);
+  cachedLeaderboardRecords = localRecords;
+  renderLeaderboard(cachedLeaderboardRecords);
 
   const remoteSaved = await saveRemoteLeaderboard(record);
   if (remoteSaved) {
     const remoteRecords = await fetchRemoteLeaderboard();
     if (remoteRecords) {
       writeLocalLeaderboard(remoteRecords);
-      renderLeaderboard(remoteRecords);
-      return;
+      cachedLeaderboardRecords = remoteRecords;
+      renderLeaderboard(cachedLeaderboardRecords);
     }
   }
-
-  renderLeaderboard(localRecords);
 }
 
 function checkWin() {
@@ -630,59 +711,72 @@ function startGame() {
   hideGameOver();
 
   const themeItems = getThemeItems();
-  if (!themeItems) {
-    board.innerHTML = "";
-    updateStats();
-    statusEl.textContent = `Add at least ${totalPairs} image URLs for custom theme.`;
-    return;
-  }
-
   statusEl.textContent = "Find all matching pairs.";
   deck = buildDeck(themeItems);
   updateStats();
   renderBoard();
 }
 
-function updateSetupThemeControls() {
-  customThemeControls.classList.toggle("hidden", themeSelect.value !== "custom");
-}
-
 function startConfiguredGame() {
-  const selectedDifficulty = difficultySelect.value as Difficulty;
-  const selectedTheme = themeSelect.value as ThemeName;
-  const enteredName = playerNameInput.value.trim();
-
-  currentPlayerName = enteredName.length > 0 ? enteredName : "Player";
-  playerNameInput.value = currentPlayerName;
-
-  applyDifficulty(selectedDifficulty);
-  currentTheme = selectedTheme;
-
-  if (currentTheme === "custom") {
-    customImages = parseCustomImageUrls(customImageUrlsInput.value);
-    if (customImages.length < totalPairs) {
-      statusEl.textContent = "";
-      alert(`Please enter at least ${totalPairs} valid image URLs for custom theme.`);
-      return;
-    }
-  }
-
-  activePlayerEl.textContent = currentPlayerName;
-  activeDifficultyEl.textContent = difficultyConfig[currentDifficulty].label;
-  activeThemeEl.textContent = themeLabels[currentTheme];
-
+  normalizePlayerNameInput();
   showGameScreen();
   startGame();
 }
 
-themeSelect.addEventListener("change", updateSetupThemeControls);
+openDifficultyBtn.addEventListener("click", () => {
+  syncPlayerNameFromInput();
+  showDifficultyScreen();
+});
+
+openThemeBtn.addEventListener("click", () => {
+  syncPlayerNameFromInput();
+  showThemeScreen();
+});
+
+difficultyBackBtn.addEventListener("click", showLandingScreen);
+themeBackBtn.addEventListener("click", showLandingScreen);
+
+difficultyOptionButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const selected = button.dataset.difficultyOption as Difficulty | undefined;
+    if (!selected) {
+      return;
+    }
+    applyDifficulty(selected);
+    showLandingScreen();
+  });
+});
+
+themeOptionButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const selected = button.dataset.themeOption as ThemeName | undefined;
+    if (!selected) {
+      return;
+    }
+    currentTheme = selected;
+    showLandingScreen();
+  });
+});
+
+playerNameInput.addEventListener("input", () => {
+  syncPlayerNameFromInput();
+  renderLeaderboard(cachedLeaderboardRecords);
+});
+
+playerNameInput.addEventListener("blur", () => {
+  normalizePlayerNameInput();
+  renderLeaderboard(cachedLeaderboardRecords);
+});
+
 startGameBtn.addEventListener("click", startConfiguredGame);
 restartBtn.addEventListener("click", startGame);
 restartGameOverBtn.addEventListener("click", startGame);
-backToSetupBtn.addEventListener("click", showSetupScreen);
+backToSetupBtn.addEventListener("click", showLandingScreen);
 
-updateSetupThemeControls();
+applyDifficulty(currentDifficulty);
+updateSelectionCards();
+updatePickerSelectionState();
 void loadLeaderboard();
-showSetupScreen();
+showLandingScreen();
 
 export {};
