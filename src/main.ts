@@ -179,6 +179,7 @@ let elapsedSeconds = 0;
 let timerId: number | null = null;
 let hasStarted = false;
 let audioContext: AudioContext | null = null;
+let initialRevealTimeoutId: number | null = null;
 
 function shuffle<T>(items: T[]): T[] {
   const arr = [...items];
@@ -710,6 +711,21 @@ function startGame() {
   deck = buildDeck(themeItems);
   updateStats();
   renderBoard();
+  // Show all cards briefly so player can memorize them, then hide again
+  lockBoard = true;
+  statusEl.textContent = "Memorize the cards!";
+  const cardButtons = Array.from(board.querySelectorAll<HTMLButtonElement>(".card"));
+  cardButtons.forEach((b) => b.classList.add("flipped"));
+  if (initialRevealTimeoutId) {
+    window.clearTimeout(initialRevealTimeoutId);
+    initialRevealTimeoutId = null;
+  }
+  initialRevealTimeoutId = window.setTimeout(() => {
+    cardButtons.forEach((b) => b.classList.remove("flipped"));
+    lockBoard = false;
+    initialRevealTimeoutId = null;
+    statusEl.textContent = "Find all matching pairs.";
+  }, 3000);
 }
 
 function startConfiguredGame() {
