@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Leaderboard — All Standings</title>
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    .leaderboard-full { max-width: 720px; margin: 24px auto; padding: 16px; }
+    .leaderboard-full ol { list-style: none; padding: 0; }
+    .leaderboard-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(0,0,0,0.06); }
+  </style>
+</head>
+<body>
+  <main class="leaderboard-full">
+    <h1>All Leaderboard Standings</h1>
+    <p><a href="index.html">← Back to game</a></p>
+    <div id="status">Loading…</div>
+    <ol id="fullList"></ol>
+  </main>
+
+  <script>
+    // ensure the API URL is present when opened directly
+    window.LEADERBOARD_API_URL = window.LEADERBOARD_API_URL || 'https://memory-card-game-qg6h.vercel.app/api/leaderboard';
+
+    function formatTime(totalSeconds){
+      const minutes = Math.floor(totalSeconds/60); const seconds = totalSeconds%60;
+      return `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+    }
+
+    async function loadAll(){
+      const status = document.getElementById('status');
+      const list = document.getElementById('fullList');
+      try{
+        const res = await fetch(window.LEADERBOARD_API_URL);
+        if(!res.ok) throw new Error('Network error');
+        const data = await res.json();
+        if(!Array.isArray(data) || data.length===0){ status.textContent = 'No records found.'; return; }
+        status.textContent = '';
+        data.forEach((row)=>{
+          const li = document.createElement('li'); li.className = 'leaderboard-row';
+          const left = document.createElement('div'); left.textContent = `#${row.rank} ${row.name}`;
+          const mid = document.createElement('div'); mid.textContent = `Score ${row.score}`;
+          const right = document.createElement('div'); right.textContent = formatTime(row.finishedTime ?? row.time ?? 0);
+          li.appendChild(left); li.appendChild(mid); li.appendChild(right);
+          list.appendChild(li);
+        });
+      }catch(err){ status.textContent = 'Failed to load leaderboard.'; console.error(err); }
+    }
+
+    void loadAll();
+  </script>
+</body>
+</html>
