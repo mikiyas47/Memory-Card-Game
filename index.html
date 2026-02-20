@@ -131,8 +131,9 @@
   </section>
 
   <script>
-    // Point the frontend to the Vercel backend leaderboard API
-    window.LEADERBOARD_API_URL = "https://memory-card-game-qg6h.vercel.app/api/leaderboard";
+    // For local development point the frontend to the local backend.
+    // Change to your deployed URL when you want to use the remote API.
+    window.LEADERBOARD_API_URL = "http://localhost:4000/api/leaderboard";
   </script>
   <script type="module" src="./dist/main.js"></script>
 </body>

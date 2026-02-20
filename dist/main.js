@@ -116,6 +116,7 @@ let elapsedSeconds = 0;
 let timerId = null;
 let hasStarted = false;
 let audioContext = null;
+let initialRevealTimeoutId = null;
 function shuffle(items) {
     const arr = [...items];
     for (let i = arr.length - 1; i > 0; i -= 1) {
@@ -411,7 +412,7 @@ function renderLeaderboard(records) {
     }
     const normalizedCurrentName = currentPlayerName.trim().toLowerCase();
     const playerRow = rows.find((row) => row.name.toLowerCase() === normalizedCurrentName);
-    const topRows = rows.slice(0, 5);
+    const topRows = rows.slice(0, 8);
     const playerInTopRows = !!playerRow && topRows.some((row) => row.name === playerRow.name);
     if (playerRow) {
         playerStandingEl.textContent = `Your standing: #${playerRow.rank} of ${rows.length}`;
@@ -447,23 +448,8 @@ function renderLeaderboard(records) {
         item.appendChild(identity);
         item.appendChild(scoreText);
         item.appendChild(timeText);
-        // make rows clickable to view full leaderboard
-        item.style.cursor = 'pointer';
-        item.addEventListener('click', () => {
-            window.location.href = 'leaderboard.html';
-        });
         leaderboardList.appendChild(item);
     });
-    // if there are more rows, add a "View all" link
-    if (rows.length > topRows.length) {
-        const viewAll = document.createElement('li');
-        viewAll.className = 'leaderboard-view-all';
-        const link = document.createElement('a');
-        link.href = 'leaderboard.html';
-        link.textContent = 'View all standings';
-        viewAll.appendChild(link);
-        leaderboardList.appendChild(viewAll);
-    }
 }
 async function loadLeaderboard() {
     const localRecords = readLocalLeaderboard();
@@ -576,6 +562,21 @@ function startGame() {
     deck = buildDeck(themeItems);
     updateStats();
     renderBoard();
+    // Show all cards briefly so player can memorize them, then hide again
+    lockBoard = true;
+    statusEl.textContent = "Memorize the cards!";
+    const cardButtons = Array.from(board.querySelectorAll(".card"));
+    cardButtons.forEach((b) => b.classList.add("flipped"));
+    if (initialRevealTimeoutId) {
+        window.clearTimeout(initialRevealTimeoutId);
+        initialRevealTimeoutId = null;
+    }
+    initialRevealTimeoutId = window.setTimeout(() => {
+        cardButtons.forEach((b) => b.classList.remove("flipped"));
+        lockBoard = false;
+        initialRevealTimeoutId = null;
+        statusEl.textContent = "Find all matching pairs.";
+    }, 3000);
 }
 function startConfiguredGame() {
     normalizePlayerNameInput();
